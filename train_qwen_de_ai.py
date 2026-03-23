@@ -151,47 +151,68 @@ def main():
             return tokenizer.apply_chat_template(example["messages"], tokenize=False, add_generation_prompt=False)
 
     # ==========================================
-    # 5. 训练超参设置 (SFTConfig / TrainingArguments)
+    # 5. 训练超参设置 (TrainingArguments / SFTConfig)
     # ==========================================
     output_dir = "./qwen-de-AI-flavor-lora"
-    # trl 新版本推荐使用 SFTConfig 替代 TrainingArguments 来传递 max_seq_length, packing 等参数
-    training_args = SFTConfig(
-        output_dir=output_dir,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=8,
-        gradient_accumulation_steps=4,      # 有效 batch size ≈ 32
-        learning_rate=1e-4,
-        num_train_epochs=2,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.03,
-        logging_steps=20,
-        save_strategy="epoch",
-        eval_strategy="epoch",
-        save_total_limit=2,
-        bf16=True,
-        fp16=False,
-        gradient_checkpointing=True,
-        optim="paged_adamw_8bit",
-        report_to="none",
-        max_grad_norm=0.3,
-        weight_decay=0.01,
-        dataset_text_field=None,
-    )
+    
+    # 针对非常新版的 trl (>= 0.12.0)
+    # SFTConfig 的参数列表发生过多次变化。
+    # 最新版中，max_seq_length, packing 等必须通过 SFTConfig 传递，但旧版中没有这些参数。
+    # 这里使用一个小 trick 动态适配：
+    config_kwargs = {
+        "output_dir": output_dir,
+        "per_device_train_batch_size": 8,
+        "per_device_eval_batch_size": 8,
+        "gradient_accumulation_steps": 4,      # 有效 batch size ≈ 32
+        "learning_rate": 1e-4,
+        "num_train_epochs": 2,
+        "lr_scheduler_type": "cosine",
+        "warmup_ratio": 0.03,
+        "logging_steps": 20,
+        "save_strategy": "epoch",
+        "eval_strategy": "epoch",
+        "save_total_limit": 2,
+        "bf16": True,
+        "fp16": False,
+        "gradient_checkpointing": True,
+        "optim": "paged_adamw_8bit",
+        "report_to": "none",
+        "max_grad_norm": 0.3,
+        "weight_decay": 0.01,
+        "dataset_text_field": None,
+    }
+    
+    import inspect
+    if "max_seq_length" in inspect.signature(SFTConfig.__init__).parameters:
+        config_kwargs["max_seq_length"] = 1024
+    if "packing" in inspect.signature(SFTConfig.__init__).parameters:
+        config_kwargs["packing"] = True
+        
+    training_args = SFTConfig(**config_kwargs)
 
     # ==========================================
     # 6. SFTTrainer 实例化
     # ==========================================
     print("初始化 SFTTrainer...")
-    trainer = SFTTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        processing_class=tokenizer,    # trl >= 0.12.0 将 tokenizer 改为了 processing_class
-        formatting_func=formatting_func,
-        max_seq_length=1024,           # 对于某些较旧或特定版本的 trl，这几个参数依然需要传给 SFTTrainer
-        packing=True,
-    )
+    trainer_kwargs = {
+        "model": model,
+        "args": training_args,
+        "train_dataset": train_dataset,
+        "eval_dataset": eval_dataset,
+        "formatting_func": formatting_func,
+    }
+    
+    if "processing_class" in inspect.signature(SFTTrainer.__init__).parameters:
+        trainer_kwargs["processing_class"] = tokenizer
+    else:
+        trainer_kwargs["tokenizer"] = tokenizer
+        
+    if "max_seq_length" in inspect.signature(SFTTrainer.__init__).parameters:
+        trainer_kwargs["max_seq_length"] = 1024
+    if "packing" in inspect.signature(SFTTrainer.__init__).parameters:
+        trainer_kwargs["packing"] = True
+
+    trainer = SFTTrainer(**trainer_kwargs)
 
     # ==========================================
     # 7. 开始训练与模型保存
