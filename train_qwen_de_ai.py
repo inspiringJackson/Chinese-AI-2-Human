@@ -2,6 +2,9 @@ import os
 
 # 强制要求：在脚本最开头（导入其他包前）设置 HF_ENDPOINT 镜像加速
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+# 针对 datasets 库增加超时相关的环境变量设置和禁用部分检查，以防国内网络连接超时
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HTTPX_TIMEOUT"] = "300" 
 
 import torch
 from transformers import (
