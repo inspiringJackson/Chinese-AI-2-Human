@@ -1,4 +1,8 @@
 import os
+
+# 强制要求：在脚本最开头（导入其他包前）设置 HF_ENDPOINT 镜像加速
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
 import torch
 from transformers import (
     AutoModelForCausalLM,
@@ -10,9 +14,6 @@ from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_tr
 from trl import SFTTrainer
 from datasets import load_dataset
 from modelscope import snapshot_download
-
-# 强制要求：在脚本开头设置 HF_ENDPOINT 镜像加速 (用于数据集下载等)
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 def main():
     # ==========================================
