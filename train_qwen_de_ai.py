@@ -5,6 +5,8 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 # 针对 datasets 库增加超时相关的环境变量设置和禁用部分检查，以防国内网络连接超时
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HTTPX_TIMEOUT"] = "300" 
+# 开启 PyTorch 的显存碎片优化，有助于缓解 OOM 问题
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 import torch
 from transformers import (
@@ -161,9 +163,9 @@ def main():
     # 这里使用一个小 trick 动态适配：
     config_kwargs = {
         "output_dir": output_dir,
-        "per_device_train_batch_size": 8,
-        "per_device_eval_batch_size": 8,
-        "gradient_accumulation_steps": 4,      # 有效 batch size ≈ 32
+        "per_device_train_batch_size": 2,      # 减小单卡 batch size 以防止 OOM
+        "per_device_eval_batch_size": 2,       # 减小单卡 batch size 以防止 OOM
+        "gradient_accumulation_steps": 16,     # 2 * 16 = 32 (保持总的有效 batch size 约等于 32 不变)
         "learning_rate": 1e-4,
         "num_train_epochs": 2,
         "lr_scheduler_type": "cosine",
