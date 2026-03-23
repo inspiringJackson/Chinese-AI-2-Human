@@ -175,8 +175,6 @@ def main():
         report_to="none",
         max_grad_norm=0.3,
         weight_decay=0.01,
-        max_seq_length=1024,
-        packing=True,
         dataset_text_field=None,
     )
 
@@ -191,6 +189,8 @@ def main():
         eval_dataset=eval_dataset,
         processing_class=tokenizer,    # trl >= 0.12.0 将 tokenizer 改为了 processing_class
         formatting_func=formatting_func,
+        max_seq_length=1024,           # 对于某些较旧或特定版本的 trl，这几个参数依然需要传给 SFTTrainer
+        packing=True,
     )
 
     # ==========================================
