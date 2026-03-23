@@ -14,7 +14,7 @@ from transformers import (
     TrainingArguments
 )
 from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_training
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
 from datasets import load_dataset
 from modelscope import snapshot_download
 
@@ -151,10 +151,11 @@ def main():
             return tokenizer.apply_chat_template(example["messages"], tokenize=False, add_generation_prompt=False)
 
     # ==========================================
-    # 5. 训练超参设置 (TrainingArguments)
+    # 5. 训练超参设置 (SFTConfig / TrainingArguments)
     # ==========================================
     output_dir = "./qwen-de-AI-flavor-lora"
-    training_args = TrainingArguments(
+    # trl 新版本推荐使用 SFTConfig 替代 TrainingArguments 来传递 max_seq_length, packing 等参数
+    training_args = SFTConfig(
         output_dir=output_dir,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
@@ -174,6 +175,9 @@ def main():
         report_to="none",
         max_grad_norm=0.3,
         weight_decay=0.01,
+        max_seq_length=1024,
+        packing=True,
+        dataset_text_field=None,
     )
 
     # ==========================================
@@ -187,9 +191,6 @@ def main():
         eval_dataset=eval_dataset,
         processing_class=tokenizer,    # trl >= 0.12.0 将 tokenizer 改为了 processing_class
         formatting_func=formatting_func,
-        packing=True,                  # 数据集较短，开启 packing 加速
-        max_seq_length=1024,
-        dataset_text_field=None,       # 使用 formatting_func 替代
     )
 
     # ==========================================
