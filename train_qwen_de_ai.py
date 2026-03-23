@@ -185,7 +185,7 @@ def main():
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,    # trl >= 0.12.0 将 tokenizer 改为了 processing_class
         formatting_func=formatting_func,
         packing=True,                  # 数据集较短，开启 packing 加速
         max_seq_length=1024,
